@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polynomial Interpolation with Plotly</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        :root {
+            --color-cream-50: rgba(252, 252, 249, 1);
+            --color-cream-100: rgba(255, 255, 253, 1);
+            --color-slate-900: rgba(19, 52, 59, 1);
+            --color-slate-500: rgba(98, 108, 113, 1);
+            --color-teal-500: rgba(33, 128, 141, 1);
+            --color-teal-600: rgba(29, 116, 128, 1);
+            --color-brown-600-rgb: 94, 82, 64;
+            --color-charcoal-700: rgba(31, 33, 33, 1);
+            --color-charcoal-800: rgba(38, 40, 40, 1);
+            --color-gray-200: rgba(245, 245, 245, 1);
+            --color-gray-300: rgba(167, 169, 169, 1);
+            --color-gray-400-rgb: 119, 124, 124;
+            --color-teal-300: rgba(50, 184, 198, 1);
+            --color-red-500: rgba(192, 21, 47, 1);
+            --color-red-400: rgba(255, 84, 89, 1);
+            
+            --color-background: var(--color-cream-50);
+            --color-surface: var(--color-cream-100);
+            --color-text: var(--color-slate-900);
+            --color-text-secondary: var(--color-slate-500);
+            --color-primary: var(--color-teal-500);
+            --color-primary-hover: var(--color-teal-600);
+            --color-border: rgba(var(--color-brown-600-rgb), 0.2);
+            --color-card-border: rgba(var(--color-brown-600-rgb), 0.12);
+            --color-error: var(--color-red-500);
+            
+            --font-family-base: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --space-8: 8px;
+            --space-12: 12px;
+            --space-16: 16px;
+            --space-20: 20px;
+            --space-24: 24px;
+            --radius-lg: 12px;
+            --radius-base: 8px;
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.04), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --color-background: var(--color-charcoal-700);
+                --color-surface: var(--color-charcoal-800);
+                --color-text: var(--color-gray-200);
+                --color-text-secondary: rgba(167, 169, 169, 0.7);
+                --color-primary: var(--color-teal-300);
+                --color-border: rgba(var(--color-gray-400-rgb), 0.3);
+                --color-card-border: rgba(var(--color-gray-400-rgb), 0.2);
+                --color-error: var(--color-red-400);
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-family-base);
+            background-color: var(--color-background);
+            color: var(--color-text);
+            padding: var(--space-24);
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: var(--space-8);
+            color: var(--color-text);
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: var(--color-text-secondary);
+            margin-bottom: var(--space-24);
+        }
+
+        .card {
+            background-color: var(--color-surface);
+            border: 1px solid var(--color-card-border);
+            border-radius: var(--radius-lg);
+            padding: var(--space-24);
+            box-shadow: var(--shadow-md);
+            margin-bottom: var(--space-20);
+        }
+
+        .plot-container {
+            width: 100%;
+            height: 500px;
+            margin-bottom: var(--space-24);
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-24);
+        }
+
+        .slider-group {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-12);
+        }
+
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .slider-label {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--color-text);
+        }
+
+        .slider-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--color-primary);
+            font-family: monospace;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            background: var(--color-border);
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: var(--color-primary);
+            cursor: pointer;
+            border-radius: 50%;
+            border: 2px solid var(--color-surface);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: var(--color-primary);
+            cursor: pointer;
+            border-radius: 50%;
+            border: 2px solid var(--color-surface);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .info-box {
+            background-color: rgba(var(--color-brown-600-rgb), 0.05);
+            border-radius: var(--radius-base);
+            padding: var(--space-16);
+            margin-bottom: var(--space-16);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .info-box {
+                background-color: rgba(var(--color-gray-400-rgb), 0.1);
+            }
+        }
+
+        .equation {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--color-text);
+            margin-bottom: var(--space-8);
+        }
+
+        .polynomial-formula {
+            font-family: 'Georgia', serif;
+            font-size: 13px;
+            color: var(--color-text-secondary);
+            word-wrap: break-word;
+            line-height: 1.6;
+        }
+
+        .warning {
+            color: var(--color-error);
+            font-size: 12px;
+            font-style: italic;
+            margin-top: var(--space-8);
+        }
+
+        .button-group {
+            display: flex;
+            gap: var(--space-12);
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: var(--space-8) var(--space-16);
+            background: var(--color-primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius-base);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn:hover {
+            background: var(--color-primary-hover);
+        }
+
+        .btn-secondary {
+            background: var(--color-border);
+            color: var(--color-text);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(var(--color-brown-600-rgb), 0.3);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .btn-secondary {
+                background: rgba(var(--color-gray-400-rgb), 0.2);
+            }
+            
+            .btn-secondary:hover {
+                background: rgba(var(--color-gray-400-rgb), 0.35);
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: var(--space-16);
+            }
+
+            .plot-container {
+                height: 400px;
+            }
+
+            h1 {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Классическая полиномиальная интерполяция</h1>
+        <p class="subtitle">Интерполяция полиномами Лагранжа и Ньютона (разделённые разности)</p>
+        
+        <div class="card">
+            <div class="info-box">
+                <div class="equation">
+                    Метод интерполяции: 
+                    <select id="methodSelect" style="padding: 4px 8px; border-radius: 6px; border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text); font-size: 13px; margin-left: 8px;">
+                        <option value="lagrange">Лагранж</option>
+                        <option value="newton">Ньютон (разделённые разности)</option>
+                        <option value="vandermonde">Канонический (Вандермонд)</option>
+                        <option value="chebyshev">Чебышев (узлы)</option>
+                        <option value="legendre">Лежандр (узлы)</option>
+                        <option value="hermite">Эрмит (узлы)</option>
+                    </select>
+                </div>
+                <div class="equation">Степень полинома: <span id="degreeDisplay">3</span></div>
+                <div class="polynomial-formula" id="polynomialFormula">P(x) = a₀ + a₁x + a₂x² + a₃x³</div>
+                <div class="warning" id="warning" style="display: none;"></div>
+            </div>
+            <div class="button-group">
+                <button class="btn" onclick="generateRandomPoints()">Случайные точки</button>
+                <button class="btn-secondary btn" onclick="addPoint()">Добавить точку</button>
+                <button class="btn-secondary btn" onclick="removePoint()">Удалить точку</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div id="plot" class="plot-container"></div>
+        </div>
+
+        <div class="card">
+            <div class="controls">
+                <div class="slider-group">
+                    <div class="slider-header">
+                        <label class="slider-label" for="degreeSlider">Степень полинома</label>
+                        <span class="slider-value" id="degreeValue">3</span>
+                    </div>
+                    <input type="range" id="degreeSlider" min="1" max="10" step="1" value="3">
+                </div>
+
+                <div class="slider-group">
+                    <div class="slider-header">
+                        <label class="slider-label" for="pointsSlider">Количество точек</label>
+                        <span class="slider-value" id="pointsValue">8</span>
+                    </div>
+                    <input type="range" id="pointsSlider" min="3" max="15" step="1" value="8">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Generate random points
+        let dataPoints = [];
+        
+        function generateRandomPoints(numPoints = 8) {
+            dataPoints = [];
+            for (let i = 0; i < numPoints; i++) {
+                const x = (Math.random() - 0.5) * 18 + 0; // Range: -9 to 9
+                const y = (Math.random() - 0.5) * 18 + 0; // Range: -9 to 9
+                dataPoints.push([x, y]);
+            }
+            dataPoints.sort((a, b) => a[0] - b[0]);
+            updatePlot();
+        }
+
+        function addPoint() {
+            const x = (Math.random() - 0.5) * 18;
+            const y = (Math.random() - 0.5) * 18;
+            dataPoints.push([x, y]);
+            dataPoints.sort((a, b) => a[0] - b[0]);
+            document.getElementById('pointsSlider').value = dataPoints.length;
+            document.getElementById('pointsValue').textContent = dataPoints.length;
+            updatePlot();
+        }
+
+        function removePoint() {
+            if (dataPoints.length > 3) {
+                dataPoints.pop();
+                document.getElementById('pointsSlider').value = dataPoints.length;
+                document.getElementById('pointsValue').textContent = dataPoints.length;
+                updatePlot();
+            }
+        }
+
+        let currentMethod = 'lagrange';
+
+        // Chebyshev nodes on [-1, 1]
+        function chebyshevNodes(n) {
+            const nodes = [];
+            for (let k = 1; k <= n; k++) {
+                nodes.push(Math.cos((2 * k - 1) * Math.PI / (2 * n)));
+            }
+            return nodes.sort((a, b) => a - b);
+        }
+
+        // Legendre nodes (approximation using Newton's method)
+        function legendreNodes(n) {
+            const nodes = [];
+            for (let i = 1; i <= n; i++) {
+                // Initial guess
+                let x = Math.cos(Math.PI * (i - 0.25) / (n + 0.5));
+                let x1;
+                // Newton-Raphson iteration
+                do {
+                    let p1 = 1;
+                    let p2 = 0;
+                    for (let j = 1; j <= n; j++) {
+                        const p3 = p2;
+                        p2 = p1;
+                        p1 = ((2 * j - 1) * x * p2 - (j - 1) * p3) / j;
+                    }
+                    const dp = n * (x * p1 - p2) / (x * x - 1);
+                    x1 = x;
+                    x = x1 - p1 / dp;
+                } while (Math.abs(x - x1) > 1e-10);
+                nodes.push(x);
+            }
+            return nodes.sort((a, b) => a - b);
+        }
+
+        // Hermite nodes (approximation)
+        function hermiteNodes(n) {
+            // Approximate Hermite polynomial roots
+            const nodes = [];
+            for (let i = 1; i <= n; i++) {
+                // Initial approximation
+                let x = Math.sqrt(2 * n + 1 - 1.85575 * Math.pow(n, 1/6)) * 
+                        Math.cos(Math.PI * (4 * i - 1) / (4 * n + 2));
+                nodes.push(x);
+            }
+            return nodes.sort((a, b) => a - b);
+        }
+
+        // Scale nodes to data range
+        function scaleNodes(nodes, xMin, xMax) {
+            return nodes.map(x => (x + 1) * (xMax - xMin) / 2 + xMin);
+        }
+
+        // Lagrange interpolation
+        function lagrangeInterpolation(xData, yData) {
+            return function(x) {
+                let result = 0;
+                const n = xData.length;
+                
+                for (let i = 0; i < n; i++) {
+                    let term = yData[i];
+                    for (let j = 0; j < n; j++) {
+                        if (i !== j) {
+                            term *= (x - xData[j]) / (xData[i] - xData[j]);
+                        }
+                    }
+                    result += term;
+                }
+                return result;
+            };
+        }
+
+        // Newton divided differences
+        function newtonDividedDifferences(xData, yData) {
+            const n = xData.length;
+            const dividedDiff = Array(n).fill(0).map(() => Array(n).fill(0));
+            
+            // First column is y values
+            for (let i = 0; i < n; i++) {
+                dividedDiff[i][0] = yData[i];
+            }
+            
+            // Calculate divided differences
+            for (let j = 1; j < n; j++) {
+                for (let i = 0; i < n - j; i++) {
+                    dividedDiff[i][j] = (dividedDiff[i + 1][j - 1] - dividedDiff[i][j - 1]) / 
+                                        (xData[i + j] - xData[i]);
+                }
+            }
+            
+            // Return interpolation function
+            return function(x) {
+                let result = dividedDiff[0][0];
+                let product = 1;
+                
+                for (let i = 1; i < n; i++) {
+                    product *= (x - xData[i - 1]);
+                    result += dividedDiff[0][i] * product;
+                }
+                return result;
+            };
+        }
+
+        // Vandermonde matrix method (canonical polynomial)
+        function vandermondeInterpolation(xData, yData) {
+            const n = xData.length;
+            
+            // Build Vandermonde matrix: V[i][j] = x[i]^j
+            const V = [];
+            for (let i = 0; i < n; i++) {
+                const row = [];
+                for (let j = 0; j < n; j++) {
+                    row.push(Math.pow(xData[i], j));
+                }
+                V.push(row);
+            }
+            
+            // Solve V * coeffs = yData using Gaussian elimination
+            const coeffs = gaussianElimination(V, yData.slice());
+            
+            // Return interpolation function
+            return function(x) {
+                let result = 0;
+                for (let i = 0; i < coeffs.length; i++) {
+                    result += coeffs[i] * Math.pow(x, i);
+                }
+                return result;
+            };
+        }
+
+        // Polynomial fitting using least squares (kept for compatibility)
+        function polyfit(x, y, degree) {
+            const n = x.length;
+            const A = [];
+            const b = y.slice();
+            
+            // Build matrix A
+            for (let i = 0; i < n; i++) {
+                const row = [];
+                for (let j = 0; j <= degree; j++) {
+                    row.push(Math.pow(x[i], j));
+                }
+                A.push(row);
+            }
+            
+            // Solve using normal equations: (A^T * A) * coeffs = A^T * b
+            const AT = transpose(A);
+            const ATA = matrixMultiply(AT, A);
+            const ATb = matrixVectorMultiply(AT, b);
+            
+            return gaussianElimination(ATA, ATb);
+        }
+
+        function transpose(matrix) {
+            return matrix[0].map((_, colIndex) => matrix.map(row => row[colIndex]));
+        }
+
+        function matrixMultiply(A, B) {
+            const result = [];
+            for (let i = 0; i < A.length; i++) {
+                result[i] = [];
+                for (let j = 0; j < B[0].length; j++) {
+                    let sum = 0;
+                    for (let k = 0; k < A[0].length; k++) {
+                        sum += A[i][k] * B[k][j];
+                    }
+                    result[i][j] = sum;
+                }
+            }
+            return result;
+        }
+
+        function matrixVectorMultiply(A, v) {
+            return A.map(row => row.reduce((sum, val, i) => sum + val * v[i], 0));
+        }
+
+        function gaussianElimination(A, b) {
+            const n = A.length;
+            const augmented = A.map((row, i) => [...row, b[i]]);
+            
+            // Forward elimination
+            for (let i = 0; i < n; i++) {
+                // Find pivot
+                let maxRow = i;
+                for (let k = i + 1; k < n; k++) {
+                    if (Math.abs(augmented[k][i]) > Math.abs(augmented[maxRow][i])) {
+                        maxRow = k;
+                    }
+                }
+                [augmented[i], augmented[maxRow]] = [augmented[maxRow], augmented[i]];
+                
+                // Eliminate column
+                for (let k = i + 1; k < n; k++) {
+                    const factor = augmented[k][i] / augmented[i][i];
+                    for (let j = i; j < n + 1; j++) {
+                        augmented[k][j] -= factor * augmented[i][j];
+                    }
+                }
+            }
+            
+            // Back substitution
+            const x = new Array(n);
+            for (let i = n - 1; i >= 0; i--) {
+                x[i] = augmented[i][n];
+                for (let j = i + 1; j < n; j++) {
+                    x[i] -= augmented[i][j] * x[j];
+                }
+                x[i] /= augmented[i][i];
+            }
+            
+            return x;
+        }
+
+        function evaluatePolynomial(coeffs, x) {
+            return coeffs.reduce((sum, coeff, i) => sum + coeff * Math.pow(x, i), 0);
+        }
+
+        function formatLagrangeFormula(xData, yData) {
+            const n = Math.min(xData.length, 4); // Limit display
+            let formula = 'L(x) = ';
+            const terms = [];
+            
+            for (let i = 0; i < n; i++) {
+                terms.push(`y${i}·l${i}(x)`);
+            }
+            if (xData.length > n) {
+                terms.push('...');
+            }
+            return formula + terms.join(' + ');
+        }
+
+        function formatNewtonFormula(xData, yData) {
+            const n = Math.min(xData.length, 4);
+            return `N(x) = f[x₀] + f[x₀,x₁](x-x₀) + f[x₀,x₁,x₂](x-x₀)(x-x₁) + ...`;
+        }
+
+        function formatPolynomial(coeffs) {
+            const terms = coeffs.map((coeff, i) => {
+                if (Math.abs(coeff) < 1e-10) return null;
+                const sign = coeff >= 0 ? '+' : '';
+                const value = Math.abs(coeff) < 0.01 || Math.abs(coeff) > 1000 
+                    ? coeff.toExponential(2) 
+                    : coeff.toFixed(3);
+                
+                if (i === 0) return value;
+                if (i === 1) return `${sign}${value}x`;
+                return `${sign}${value}x${getSupScript(i)}`;
+            }).filter(t => t !== null);
+            
+            return `P(x) = ${terms.join(' ')}`;
+        }
+
+        function getSupScript(n) {
+            const superscripts = ['⁰', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹'];
+            return n.toString().split('').map(d => superscripts[parseInt(d)]).join('');
+        }
+
+        function updatePlot() {
+            const xData = dataPoints.map(p => p[0]);
+            const yData = dataPoints.map(p => p[1]);
+            
+            const warning = document.getElementById('warning');
+            warning.style.display = 'none';
+            
+            // Choose interpolation method
+            let interpolationFunc;
+            let xInterp = xData;
+            let yInterp = yData;
+            
+            // Vandermonde (canonical polynomial) method
+            if (currentMethod === 'vandermonde') {
+                interpolationFunc = vandermondeInterpolation(xData, yData);
+                const coeffs = [];
+                const testFunc = vandermondeInterpolation(xData, yData);
+                // Extract coefficients by evaluating basis functions
+                for (let i = 0; i < dataPoints.length; i++) {
+                    const xi = i === 0 ? 0 : Math.pow(10, -i);
+                    coeffs.push(testFunc(xi));
+                }
+                document.getElementById('polynomialFormula').textContent = 
+                    `Канонический полином (матрица Вандермонда ${dataPoints.length}×${dataPoints.length})`;
+            }
+            // For orthogonal polynomial methods, use special nodes
+            else if (currentMethod === 'chebyshev' || currentMethod === 'legendre' || currentMethod === 'hermite') {
+                const xMin = Math.min(...xData);
+                const xMax = Math.max(...xData);
+                let nodes;
+                
+                if (currentMethod === 'chebyshev') {
+                    nodes = chebyshevNodes(dataPoints.length);
+                } else if (currentMethod === 'legendre') {
+                    nodes = legendreNodes(dataPoints.length);
+                } else {
+                    nodes = hermiteNodes(dataPoints.length);
+                }
+                
+                xInterp = scaleNodes(nodes, xMin, xMax);
+                
+                // Interpolate y values at new nodes using original data
+                yInterp = xInterp.map(x => {
+                    // Linear interpolation from original data
+                    for (let i = 0; i < xData.length - 1; i++) {
+                        if (x >= xData[i] && x <= xData[i + 1]) {
+                            const t = (x - xData[i]) / (xData[i + 1] - xData[i]);
+                            return yData[i] * (1 - t) + yData[i + 1] * t;
+                        }
+                    }
+                    return yData[0];
+                });
+                
+                interpolationFunc = lagrangeInterpolation(xInterp, yInterp);
+                document.getElementById('polynomialFormula').textContent = 
+                    `${currentMethod === 'chebyshev' ? 'Чебышев' : currentMethod === 'legendre' ? 'Лежандр' : 'Эрмит'}: интерполяция на ${xInterp.length} узлах`;
+            } else if (currentMethod === 'lagrange') {
+                interpolationFunc = lagrangeInterpolation(xData, yData);
+                document.getElementById('polynomialFormula').textContent = formatLagrangeFormula(xData, yData);
+            } else {
+                interpolationFunc = newtonDividedDifferences(xData, yData);
+                document.getElementById('polynomialFormula').textContent = formatNewtonFormula(xData, yData);
+            }
+            
+            document.getElementById('degreeDisplay').textContent = dataPoints.length - 1;
+            
+            // Generate smooth curve
+            const xMin = Math.min(...xData) - 1;
+            const xMax = Math.max(...xData) + 1;
+            const xSmooth = [];
+            const ySmooth = [];
+            
+            for (let i = 0; i <= 200; i++) {
+                const x = xMin + (xMax - xMin) * i / 200;
+                xSmooth.push(x);
+                ySmooth.push(interpolationFunc(x));
+            }
+            
+            // Create traces
+            const traces = [];
+            
+            const dataTrace = {
+                x: xData,
+                y: yData,
+                mode: 'markers',
+                type: 'scatter',
+                name: 'Данные',
+                marker: {
+                    size: 12,
+                    color: '#c0152f',
+                    line: {
+                        color: 'white',
+                        width: 2
+                    }
+                }
+            };
+            traces.push(dataTrace);
+            
+            // Show interpolation nodes for orthogonal polynomial methods
+            if (currentMethod === 'chebyshev' || currentMethod === 'legendre' || currentMethod === 'hermite') {
+                const nodesTrace = {
+                    x: xInterp,
+                    y: yInterp,
+                    mode: 'markers',
+                    type: 'scatter',
+                    name: 'Узлы интерполяции',
+                    marker: {
+                        size: 8,
+                        color: '#a84b2f',
+                        symbol: 'x',
+                        line: {
+                            width: 2
+                        }
+                    }
+                };
+                traces.push(nodesTrace);
+            }
+            
+            const methodNames = {
+                'lagrange': 'Лагранж',
+                'newton': 'Ньютон',
+                'vandermonde': 'Вандермонд',
+                'chebyshev': 'Чебышев',
+                'legendre': 'Лежандр',
+                'hermite': 'Эрмит'
+            };
+            
+            const polynomialTrace = {
+                x: xSmooth,
+                y: ySmooth,
+                mode: 'lines',
+                type: 'scatter',
+                name: `${methodNames[currentMethod]} (степень ${dataPoints.length - 1})`,
+                line: {
+                    color: '#21808d',
+                    width: 3
+                }
+            };
+            traces.push(polynomialTrace);
+            
+            const layout = {
+                title: {
+                    text: `Классическая интерполяция: ${methodNames[currentMethod]}`,
+                    font: {
+                        size: 16,
+                        family: 'Inter, sans-serif'
+                    }
+                },
+                xaxis: {
+                    title: 'x',
+                    gridcolor: 'rgba(94, 82, 64, 0.1)',
+                    zeroline: true,
+                    zerolinewidth: 2,
+                    zerolinecolor: 'rgba(94, 82, 64, 0.3)'
+                },
+                yaxis: {
+                    title: 'y',
+                    gridcolor: 'rgba(94, 82, 64, 0.1)',
+                    zeroline: true,
+                    zerolinewidth: 2,
+                    zerolinecolor: 'rgba(94, 82, 64, 0.3)'
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                margin: {
+                    l: 60,
+                    r: 20,
+                    t: 40,
+                    b: 50
+                },
+                showlegend: true,
+                legend: {
+                    x: 0,
+                    y: 1,
+                    bgcolor: 'rgba(255,255,255,0.8)'
+                }
+            };
+            
+            const config = {
+                responsive: true,
+                displayModeBar: true,
+                displaylogo: false
+            };
+            
+            Plotly.newPlot('plot', traces, layout, config);
+            
+            // Handle dark mode
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                Plotly.relayout('plot', {
+                    'xaxis.gridcolor': 'rgba(119, 124, 124, 0.2)',
+                    'yaxis.gridcolor': 'rgba(119, 124, 124, 0.2)',
+                    'xaxis.zerolinecolor': 'rgba(119, 124, 124, 0.4)',
+                    'yaxis.zerolinecolor': 'rgba(119, 124, 124, 0.4)',
+                    'font.color': '#f5f5f5',
+                    'legend.bgcolor': 'rgba(38,40,40,0.8)'
+                });
+            }
+        }
+
+        // Event listeners
+        const methodSelect = document.getElementById('methodSelect');
+        const pointsSlider = document.getElementById('pointsSlider');
+        const pointsValue = document.getElementById('pointsValue');
+
+        methodSelect.addEventListener('change', (e) => {
+            currentMethod = e.target.value;
+            updatePlot();
+        });
+
+        pointsSlider.addEventListener('input', (e) => {
+            const numPoints = parseInt(e.target.value);
+            pointsValue.textContent = numPoints;
+            generateRandomPoints(numPoints);
+        });
+
+        // Initialize
+        generateRandomPoints(8);
+    </script>
+</body>
+</html>
